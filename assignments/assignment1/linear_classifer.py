@@ -19,7 +19,6 @@ def softmax(predictions):
     pred_exp = np.exp(predictions - np.expand_dims(np.max(predictions, axis=-1), -1))
     probs = pred_exp/np.expand_dims(np.sum(pred_exp, axis=-1), -1)
     
-
     return probs
 
     # raise Exception("Not implemented!")
@@ -40,15 +39,14 @@ def cross_entropy_loss(probs, target_index):
     '''
     # TODO implement cross-entropy
     # Your final implementation shouldn't have any loops
-    if isinstance(target_index, int):
-      # print(f"q(x): {probs}")
-      loss = -np.sum(np.log(np.take(probs, target_index, axis=-1)))
-    else:
-      # print(f"q(x) shape: {np.take_along_axis(probs, target_index, axis=-1).shape}")
-      loss = -np.sum(np.log(np.take_along_axis(probs, target_index, axis=-1))) / len(probs)
-    return loss
-    # raise Exception("Not implemented!")
+    t_i = np.array(target_index, ndmin=1)
+    t_i = t_i.reshape((t_i.shape[0], 1))
+    
+    prbs = np.array(probs, ndmin=2)
 
+    loss = -np.sum(np.log(np.take_along_axis(prbs, t_i, axis=-1))) / prbs.shape[0]
+    
+    return loss
 
 def softmax_with_cross_entropy(predictions, target_index):
     '''
@@ -67,19 +65,19 @@ def softmax_with_cross_entropy(predictions, target_index):
     '''
     # TODO implement softmax with cross-entropy
     # Your final implementation shouldn't have any loops
-    probs = softmax(predictions)
-    loss = cross_entropy_loss(probs, target_index)
+    t_i = np.array(target_index, ndmin=1)
+    pred = np.array(predictions, ndmin=2)
 
-    ground_truth = np.zeros_like(predictions)
-    if isinstance(target_index, int):
-      batch_size = 1
-      ground_truth[target_index] = 1
-    else:
-      batch_size = len(ground_truth)
-      for i in range(batch_size):
-        ground_truth[i, target_index[i]] = 1
+    probs = softmax(pred)
+    loss = cross_entropy_loss(probs, t_i)
+
+    ground_truth = np.zeros_like(pred, dtype=int)
+    ground_truth[np.arange(t_i.size), t_i.flatten()] = 1
+
+    batch_size = len(t_i)
     
     dprediction = (probs - ground_truth) / batch_size
+    dprediction = dprediction.reshape(predictions.shape)
 
     return loss, dprediction
 
@@ -126,10 +124,6 @@ def linear_softmax(X, W, target_index):
     # Your final implementation shouldn't have any loops
     loss, dprediction = softmax_with_cross_entropy(predictions, target_index)
 
-    # dW = np.sum(np.expand_dims(X, -1) * np.expand_dims(dprediction, -2), 0)
-    # if len(X.shape) == 1:
-    #   dW = np.einsum(X, dprediction, 'ij,ik->jk')
-    # else:
     dW = np.einsum('ij,ik->jk', X, dprediction)
     
     return loss, dW
